@@ -69,7 +69,8 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.csvFiles=[]
         self.log=[]
         self.callsigns=[]
-        self.panelTextFields={}
+        self.panels={}
+        self.panelTableWidgets={}
         self.ui.logField.clear()
         self.readDir()
         self.watchedFile=self.csvFiles[0][0]
@@ -87,20 +88,43 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
             for entry in newEntries:
                 if len(entry)==10:
                     self.log.append(entry)
-                    self.ui.logField.append(str(type(entry))+" "+str(len(entry)))
                     time,tf,callsign,msg,radioLoc,status,epoch,d1,d2,d3=entry
                     self.ui.logField.append(str(entry))
+                    
+                    # add a new panel if needed
                     if not callsign in self.callsigns:
                         self.callsigns.append(callsign)
-                        sub=QMdiSubWindow()
-                        self.panelTextFields[callsign]=QTextEdit()
-                        sub.setWidget(self.panelTextFields[callsign])
+                        sub=Panel(self)
+                        self.panels[callsign]=sub
+                        table=QTableWidget(0,3)
+                        self.panelTableWidgets[callsign]=table
+                        table.horizontalHeader().setMinimumSectionSize(15)
+                        table.horizontalHeader().setStretchLastSection(True)
+                        table.verticalHeader().setDefaultSectionSize(15)
+                        table.horizontalHeader().hide()
+                        table.verticalHeader().hide()               
+                        sub.setWidget(table)
+                        sub.setWindowFlags(Qt.WindowTitleHint)
                         sub.setWindowTitle(callsign)
                         self.ui.mdi.addSubWindow(sub)
                         sub.show()
                         self.ui.mdi.tileSubWindows()
-                        print(str(self.ui.mdi.subWindowList()))
-                    self.panelTextFields[callsign].append(str(entry))
+                        
+                    # add new entry to the callsign's table
+                    newRowCount=self.panelTableWidgets[callsign].rowCount()+1
+                    self.panelTableWidgets[callsign].setRowCount(newRowCount)
+                    if tf=="TO":
+                        tf=">"
+                    elif tf=="FROM":
+                        tf="<"
+                    else:
+                        tf="?"
+                    self.panelTableWidgets[callsign].setItem(newRowCount-1,0,QTableWidgetItem(time))
+                    self.panelTableWidgets[callsign].setItem(newRowCount-1,1,QTableWidgetItem(tf))
+                    self.panelTableWidgets[callsign].setItem(newRowCount-1,2,QTableWidgetItem(msg))
+                    self.panels[callsign].setWindowTitle(callsign+" : "+status)
+                    self.panelTableWidgets[callsign].resizeColumnsToContents()
+                    self.ui.mdi.setActiveSubWindow(self.panels[callsign])
         
     # get a list of non-clueLog filenames, modification times, and sizes
     #  in the watchedDir, sorted by modification time (so that the most recent
@@ -119,12 +143,54 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         newEntries=[]
         for line in Pygtail(self.watchedFile):
             newEntries.append(line.split(','))
-#             self.ui.logField.append(line)
-#         for entry in self.log:
-#             self.ui.logField.append(str(entry))
         return newEntries
 
+    # need an intelligent method of (re)tiling MDI subwindows
+    #  in a method that works best for this specific application;
+    # for each new panel, follow these rules in order:
+    # - define a fixed minPanelHeight
+    # - if there is enough vertical space for another panel on the
+    #     leftmost existing column of panels, add it there; otherwise
+    #     start another column of panels
+    # - if mdiHeight>(maxVerticalPanelCount*minPanelHeight)
+#     def retile(self):
+#         # 1. decide what panels should go in what rows/columns
+#         panelGrid=[][]
+#         mdiHeight=self.ui.mdi.height()
+#         maxRows=int(mdiHeight/self.minPanelHeight)
+#         col=0
+#         row=0
+#         for panel in self.panels:
+#             if row>maxRows:
+#                 row=0
+#                 col=col+1
+#             panelGrid[col][row]=panel
+#             row=row+1
+#         # 2. place and size the panels accordingly
+#         panelWidth=mdiWidth/(col+1)
+#         x=0
+#         pos=QPoint(0,0)
+#         for col in panelGrid:
+#             panelHeight=mdiHeight/len(panelGrid[col])
+#             y=0
+#             for row in panelGrid[col]:
+#                 rect=QRect(0,0,colWidth,panelHeight)
+#                 panelGrid[col][row].setGeometry(rect)
+#                 panelGrid[col][row].move(pos)
+#                 pos.setY(pos.y()+panelHeight)
+#             pos.setX(pos.x()+panelWidth)
 
+
+class Panel(QMdiSubWindow):
+    def __init__(self,parent,*args):
+        QMdiSubWindow.__init__(self,*args)
+        self.parent=parent
+    
+    def closeEvent(self,event):
+        print("closing")
+        QTimer.singleShot(200,self.parent.ui.mdi.tileSubWindows)
+        
+        
 def main():
     app = QApplication(sys.argv)
     w = MyWindow(app)

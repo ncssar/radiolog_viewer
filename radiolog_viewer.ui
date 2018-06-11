@@ -6,92 +6,48 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>899</width>
-    <height>886</height>
+    <width>1456</width>
+    <height>880</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QTextEdit" name="logField">
-   <property name="geometry">
-    <rect>
-     <x>13</x>
-     <y>86</y>
-     <width>709</width>
-     <height>107</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="rescanButton">
-   <property name="geometry">
-    <rect>
-     <x>452</x>
-     <y>36</y>
-     <width>93</width>
-     <height>28</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Re-scan</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="watchedDirField">
-   <property name="geometry">
-    <rect>
-     <x>148</x>
-     <y>18</y>
-     <width>290</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="watchedFileField">
-   <property name="geometry">
-    <rect>
-     <x>149</x>
-     <y>56</y>
-     <width>290</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>46</x>
-     <y>20</y>
-     <width>80</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Watched Dir</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_2">
-   <property name="geometry">
-    <rect>
-     <x>47</x>
-     <y>53</y>
-     <width>80</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Watched File</string>
-   </property>
-  </widget>
-  <widget class="QMdiArea" name="mdi">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>206</y>
-     <width>865</width>
-     <height>667</height>
-    </rect>
-   </property>
-  </widget>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Watched Dir</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLineEdit" name="watchedDirField"/>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="rescanButton">
+     <property name="text">
+      <string>Re-scan</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Watched File</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QLineEdit" name="watchedFileField"/>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <widget class="QMdiArea" name="mdi"/>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <widget class="QTextEdit" name="logField"/>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
