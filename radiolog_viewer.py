@@ -58,6 +58,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.watchedDir="C:\\Users\\caver\\Documents"
         self.ui.watchedDirField.setText(self.watchedDir)
+        self.minPanelHeight=50
         self.rescan()
         self.refresh()
         self.readTimer=QTimer(self)
@@ -108,7 +109,9 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
                         sub.setWindowTitle(callsign)
                         self.ui.mdi.addSubWindow(sub)
                         sub.show()
-                        self.ui.mdi.tileSubWindows()
+                        print(self.panels)
+#                         self.ui.mdi.tileSubWindows()
+                        self.retile()
                         
                     # add new entry to the callsign's table
                     newRowCount=self.panelTableWidgets[callsign].rowCount()+1
@@ -153,32 +156,35 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
     #     leftmost existing column of panels, add it there; otherwise
     #     start another column of panels
     # - if mdiHeight>(maxVerticalPanelCount*minPanelHeight)
-#     def retile(self):
-#         # 1. decide what panels should go in what rows/columns
-#         panelGrid=[][]
-#         mdiHeight=self.ui.mdi.height()
-#         maxRows=int(mdiHeight/self.minPanelHeight)
-#         col=0
-#         row=0
-#         for panel in self.panels:
-#             if row>maxRows:
-#                 row=0
-#                 col=col+1
-#             panelGrid[col][row]=panel
-#             row=row+1
-#         # 2. place and size the panels accordingly
-#         panelWidth=mdiWidth/(col+1)
-#         x=0
-#         pos=QPoint(0,0)
-#         for col in panelGrid:
-#             panelHeight=mdiHeight/len(panelGrid[col])
-#             y=0
-#             for row in panelGrid[col]:
-#                 rect=QRect(0,0,colWidth,panelHeight)
-#                 panelGrid[col][row].setGeometry(rect)
-#                 panelGrid[col][row].move(pos)
-#                 pos.setY(pos.y()+panelHeight)
-#             pos.setX(pos.x()+panelWidth)
+    def retile(self):
+        # 1. decide what panels should go in what rows/columns
+        panelGrid=[[]]
+        mdiHeight=self.ui.mdi.height()
+        mdiWidth=self.ui.mdi.width()
+        maxRows=int(mdiHeight/self.minPanelHeight)
+        col=0
+        row=0
+        for panel in self.panels.values():
+            if row>maxRows:
+                row=0
+                col=col+1
+                panelGrid.append([])
+            panelGrid[col].append(panel)
+            row=row+1
+        # 2. place and size the panels accordingly
+        panelWidth=mdiWidth/(col+1)
+        x=0
+        pos=QPoint(0,0)
+        print(str(panelGrid))
+        for col in panelGrid:
+            panelHeight=mdiHeight/len(col)
+            y=0
+            for panel in col:
+                rect=QRect(0,0,panelWidth,panelHeight)
+                panel.setGeometry(rect)
+                panel.move(pos)
+                pos.setY(pos.y()+panelHeight)
+            pos.setX(pos.x()+panelWidth)
 
 
 class Panel(QMdiSubWindow):
