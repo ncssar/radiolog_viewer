@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="radiolog_viewer_ui">
+    <file>close.png</file>
+    <file>options_icon.png</file>
+    <file>reload-icon.png</file>
+  </qresource>
+</RCC>

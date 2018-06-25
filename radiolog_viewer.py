@@ -45,89 +45,141 @@ import sys
 import os
 import glob
 import regex
+import time
 
 from radiolog_viewer_ui import Ui_radiolog_viewer
 
+statusColorDict={}
+statusColorDict["At IC"]="22ff22"
+statusColorDict["In Transit"]="2222ff"
 
-class MyWindow(QDialog,Ui_radiolog_viewer):
+class MyWindow(QMainWindow,Ui_radiolog_viewer):
     def __init__(self,parent):
         QDialog.__init__(self)
         self.parent=parent
+        self.rcFileName="radiolog_viewer.rc"
         self.ui=Ui_radiolog_viewer()
         self.ui.setupUi(self)
         self.setAttribute(Qt.WA_DeleteOnClose)
+        
+        self.panels={}
+#         self.dockTableWidgets={}
+        
         self.watchedDir="C:\\Users\\caver\\Documents"
-        self.ui.watchedDirField.setText(self.watchedDir)
-        self.minPanelHeight=50
+#         self.watchedFile=""
+#         self.ui.watchedDirField.setText(self.watchedDir)
+#         self.setCentralWidget(self.ui.groupBox)
+#         self.setStyleSheet("QDockWidget {font-size:12pt;font-weight:bold}")
+        # disable AllowTabbedDocks - tabbed docks are not immediately obvious
+#         self.setDockOptions(self.AnimatedDocks|self.AllowNestedDocks)
+#         self.mindockHeight=50
+#         self.panelColCount=1
+#         self.panelRowCount=0
+        self.panelWidth=300
+        self.panelHeight=120
+        self.panelSpacing=2
+        # if a new dock would cause the window to expand taller than
+        #  maxDockAreaHeight, then add a column instead and start at the top
+        #  of the new column
+        self.maxGridHeight=600
+        self.setStyleSheet("background-color:gray")
+        # default window geometry; overridden by previous rc file
+        self.x=100
+        self.y=100
+        self.w=self.panelWidth+20
+        self.h=400
+        self.fontSize=10
+        self.grid=[[0]]
+        
+        self.loadRcFile()
+        self.setGeometry(int(self.x),int(self.y),int(self.w),int(self.h))
+        
+        self.latestCallsign=""
+        self.latestColor=[230,230,255]    
+        self.updateClock()
         self.rescan()
-        self.refresh()
-        self.readTimer=QTimer(self)
-        self.readTimer.timeout.connect(self.refresh)
-        self.readTimer.start(3000)
+        
+        self.refreshTimer=QTimer(self)
+        self.refreshTimer.timeout.connect(self.refresh)
+        self.refreshTimer.timeout.connect(self.updateClock)
+        self.refreshTimer.start(3000)
         
     def rescan(self):
         print("scanning for latest valid csv file...")
         self.csvFiles=[]
         self.log=[]
         self.callsigns=[]
-        self.panels={}
-        self.panelTableWidgets={}
-        self.ui.logField.clear()
+#         for panel in self.panels:
+#             self.removeDockWidget(self.docks[dock])
+#             self.docks[dock].setParent(None)
+#         for dockTableWidget in self.dockTableWidgets:
+#             self.dockTableWidgets[dockTableWidget].setParent(None)
         self.readDir()
         self.watchedFile=self.csvFiles[0][0]
         # remove the pygtail offset file, if any, so pygtail will
         #  read from the beginning even if this file has already
         #  been read by pygtail
-        os.remove(self.watchedFile+".offset")
-        self.ui.watchedFileField.setText(self.watchedFile)
+        if os.path.isfile(self.watchedFile+".offset"):
+            os.remove(self.watchedFile+".offset")
+#         self.ui.watchedFileField.setText(self.watchedFile)
         print("  found "+self.watchedFile)
-        
-    def refresh(self):
+        self.refresh(throb=False)
+        if self.latestCallsign!="":
+            self.panels[self.latestCallsign].throb(self.latestColor)
+#         self.getGridLocations()
+    
+    # refresh - this is the main loop
+    #  - read any new lines from the log file
+    #  - process each new line
+    #    - add a new panel (and place it correctly) if it's a new callsign
+    #    - add a row to the appropriate panel's table    
+    def refresh(self,throb=True):
         newEntries=self.readWatchedFile()
         if newEntries:
-            self.ui.logField.append(str(len(newEntries))+" new entries:\n")
+#             self.ui.logField.append(str(len(newEntries))+" new entries:\n")
             for entry in newEntries:
                 if len(entry)==10:
-                    self.log.append(entry)
                     time,tf,callsign,msg,radioLoc,status,epoch,d1,d2,d3=entry
-                    self.ui.logField.append(str(entry))
                     
                     # add a new panel if needed
                     if not callsign in self.callsigns:
-                        self.callsigns.append(callsign)
-                        sub=Panel(self)
-                        self.panels[callsign]=sub
-                        table=QTableWidget(0,3)
-                        self.panelTableWidgets[callsign]=table
-                        table.horizontalHeader().setMinimumSectionSize(15)
-                        table.horizontalHeader().setStretchLastSection(True)
-                        table.verticalHeader().setDefaultSectionSize(15)
-                        table.horizontalHeader().hide()
-                        table.verticalHeader().hide()               
-                        sub.setWidget(table)
-                        sub.setWindowFlags(Qt.WindowTitleHint)
-                        sub.setWindowTitle(callsign)
-                        self.ui.mdi.addSubWindow(sub)
-                        sub.show()
-                        print(self.panels)
-#                         self.ui.mdi.tileSubWindows()
-                        self.retile()
+                        self.newPanel(callsign)
                         
-                    # add new entry to the callsign's table
-                    newRowCount=self.panelTableWidgets[callsign].rowCount()+1
-                    self.panelTableWidgets[callsign].setRowCount(newRowCount)
+                    # add new entry to the callsign's panel's table
+                    p=self.panels[callsign]
+#                     p.statusWidget.setText(status)
+                    p.statusWidget.setStyleSheet("background-color:#"+statusColorDict.get(status,"eeeeee"))
+                    t=p.tableWidget
+                    newRowCount=t.rowCount()+1
+                    t.setRowCount(newRowCount)
                     if tf=="TO":
                         tf=">"
                     elif tf=="FROM":
                         tf="<"
                     else:
                         tf="?"
-                    self.panelTableWidgets[callsign].setItem(newRowCount-1,0,QTableWidgetItem(time))
-                    self.panelTableWidgets[callsign].setItem(newRowCount-1,1,QTableWidgetItem(tf))
-                    self.panelTableWidgets[callsign].setItem(newRowCount-1,2,QTableWidgetItem(msg))
-                    self.panels[callsign].setWindowTitle(callsign+" : "+status)
-                    self.panelTableWidgets[callsign].resizeColumnsToContents()
-                    self.ui.mdi.setActiveSubWindow(self.panels[callsign])
+
+ 
+                    t.setItem(newRowCount-1,0,QTableWidgetItem(time))
+                    t.setItem(newRowCount-1,1,QTableWidgetItem(tf))
+                    t.setItem(newRowCount-1,2,QTableWidgetItem(msg))
+#                     p.setWindowTitle(callsign+" : "+status)
+
+#                     self.dockTableWidgets[callsign].setSelectionMode(QAbstractItemView.NoSelection)
+                    t.resizeColumnsToContents()
+#                     self.dockTableWidgets[callsign].resizeRowsToContents()
+#                     self.docks[callsign].palette.setColor(QPalette.Background,QColor(220,220,255))
+#                     self.docks[callsign].setStyleSheet("background:rgb(220,220,255)")
+#                     for d in self.docks:
+#                         self.docks[d].palette.setColor(QPalette.Background,QColor(255,255,255))
+#                         self.docks[d].setStyleSheet("background:white;border:1px solid gray")
+#                         self.setStyleSheet("QDockWidget#"+d+"::title {background:gray}")
+#                     self.docks[callsign].setStyleSheet("border:3px solid blue")
+#                     self.setStyleSheet("QDockWidget#"+str(callsign).replace(" ","")+"::title {background:green}")
+#                     self.ui.mdi.setActiveSubWindow(self.docks[callsign])
+                    if throb:
+                        p.throb(self.latestColor)
+                    self.latestCallsign=callsign
         
     # get a list of non-clueLog filenames, modification times, and sizes
     #  in the watchedDir, sorted by modification time (so that the most recent
@@ -150,51 +202,257 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
 
     # need an intelligent method of (re)tiling MDI subwindows
     #  in a method that works best for this specific application;
-    # for each new panel, follow these rules in order:
-    # - define a fixed minPanelHeight
-    # - if there is enough vertical space for another panel on the
-    #     leftmost existing column of panels, add it there; otherwise
-    #     start another column of panels
-    # - if mdiHeight>(maxVerticalPanelCount*minPanelHeight)
-    def retile(self):
-        # 1. decide what panels should go in what rows/columns
-        panelGrid=[[]]
-        mdiHeight=self.ui.mdi.height()
-        mdiWidth=self.ui.mdi.width()
-        maxRows=int(mdiHeight/self.minPanelHeight)
-        col=0
-        row=0
-        for panel in self.panels.values():
-            if row>maxRows:
-                row=0
-                col=col+1
-                panelGrid.append([])
-            panelGrid[col].append(panel)
-            row=row+1
-        # 2. place and size the panels accordingly
-        panelWidth=mdiWidth/(col+1)
-        x=0
-        pos=QPoint(0,0)
-        print(str(panelGrid))
-        for col in panelGrid:
-            panelHeight=mdiHeight/len(col)
-            y=0
-            for panel in col:
-                rect=QRect(0,0,panelWidth,panelHeight)
-                panel.setGeometry(rect)
-                panel.move(pos)
-                pos.setY(pos.y()+panelHeight)
-            pos.setX(pos.x()+panelWidth)
+    # for each new dock, follow these rules in order:
+    # - define a fixed mindockHeight
+    # - if there is enough vertical space for another dock on the
+    #     leftmost existing column of docks, add it there; otherwise
+    #     start another column of docks
+    # - if mdiHeight>(maxVerticaldockCount*mindockHeight)
+#     def retile(self):
+#         # 1. decide what docks should go in what rows/columns
+#         dockGrid=[[]]
+#         mdiHeight=self.ui.mdi.height()
+#         mdiWidth=self.ui.mdi.width()
+#         maxRows=int(mdiHeight/self.mindockHeight)
+#         col=0
+#         row=0
+#         for dock in self.docks.values():
+#             if row>maxRows:
+#                 row=0
+#                 col=col+1
+#                 dockGrid.append([])
+#             dockGrid[col].append(dock)
+#             row=row+1
+#         # 2. place and size the docks accordingly
+#         dockWidth=mdiWidth/(col+1)
+#         x=0
+#         pos=QPoint(0,0)
+#         print(str(dockGrid))
+#         for col in dockGrid:
+#             dockHeight=mdiHeight/len(col)
+#             y=0
+#             for dock in col:
+#                 rect=QRect(0,0,dockWidth,dockHeight)
+#                 dock.setGeometry(rect)
+#                 dock.move(pos)
+#                 pos.setY(pos.y()+dockHeight)
+#             pos.setX(pos.x()+dockWidth)
 
-
-class Panel(QMdiSubWindow):
-    def __init__(self,parent,*args):
-        QMdiSubWindow.__init__(self,*args)
-        self.parent=parent
+    def newPanel(self,callsign):
+        [row,col]=self.getFirstOpenGridLocation()
+        print("First available grid location: "+str([row,col]))
+#         maxRows=int(self.maxGridHeight/self.panelHeight)
+#         if self.panelRowCount>=maxRows:
+#             self.panelColCount=self.panelColCount+1
+#         else:
+#             self.panelRowCount=self.panelRowCount+1
+#         row=len(self.panels)%maxRows
+#         col=self.panelColCount
+#         gridHeight=50+self.panelHeight*self.panelRowCount
+#         gridWidth=20+self.panelWidth*self.panelColCount
+        self.callsigns.append(callsign)
+        panel=Panel(self)
+        self.panels[callsign]=panel
+        panel.titleWidget.setText(callsign)
+        t=panel.tableWidget
+        t.horizontalHeader().setMinimumSectionSize(15)
+        t.horizontalHeader().setStretchLastSection(True)
+        t.verticalHeader().setDefaultSectionSize(15)
+        t.horizontalHeader().hide()
+        t.verticalHeader().hide()
+        t.setSelectionMode(QAbstractItemView.NoSelection)
+        t.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        t.setObjectName(callsign.replace(" ",""))
+        t.setMaximumHeight(self.panelHeight-40)
+        t.setMinimumHeight(self.panelHeight-40)
+        t.setMaximumWidth(self.panelWidth-8)
+        t.setMinimumWidth(self.panelWidth-8)
+        t.setGeometry(QRect(0,0,300,200))
+        self.ui.gridLayout.addWidget(panel,row,col)
+        s=max(self.ui.gridLayout.horizontalSpacing(),self.ui.gridLayout.verticalSpacing())
+        gridHeight=(self.panelHeight+s)*self.ui.gridLayout.rowCount()-s
+        gridWidth=(self.panelWidth+s)*self.ui.gridLayout.columnCount()-s
+        self.ui.gridLayoutWidget.setGeometry(QRect(0,50,gridWidth,gridHeight))
     
+    def getFirstOpenGridLocation(self):
+        rows=self.ui.gridLayout.rowCount()
+        cols=self.ui.gridLayout.columnCount()
+        print("the grid currently has "+str(rows)+" rows and "+str(cols)+" columns")
+#         for c in range(1,cols+1):
+        for c in range(cols):
+#             for r in range(1,min(rows,int(self.maxGridHeight/self.panelHeight))+1):
+             for r in range(min(rows,int(self.maxGridHeight/self.panelHeight))+1):
+                print("checking row:"+str(r)+" col:"+str(c)+" = "+str(self.ui.gridLayout.itemAtPosition(r,c)))
+                if not self.ui.gridLayout.itemAtPosition(r,c):
+                    print("empty cell found!")
+                    return([r,c])
+        return([0,c+1])
+    
+#               
+#         c=0
+#         for col in self.grid:
+#             c=c+1
+#             r=0
+#             for row in col:
+#                 r=r+1
+#                 print("checking row:"+str(r)+" col:"+str(c))
+#                 if row=="":
+#                     return([c,r])
+#         # no open location found - the existing grid is full:
+#         #  add a column and return the first row in the new column
+#         self.grid.append([[]])
+#         return([c+1,0])
+                 
+    def updateClock(self):
+        self.ui.clock.display(time.strftime("%H:%M"))
+        
+    def saveRcFile(self):
+        print("saving...")
+        (x,y,w,h)=self.geometry().getRect()
+        rcFile=QFile(self.rcFileName)
+        if not rcFile.open(QFile.WriteOnly|QFile.Text):
+            warn=QMessageBox(QMessageBox.Warning,"Error","Cannot write resource file " + self.rcFileName + "; proceeding, but, current settings will be lost. "+rcFile.errorString(),
+                            QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            warn.show()
+            warn.raise_()
+            warn.exec_()
+            return
+        out=QTextStream(rcFile)
+        out << "[RadioLog Viewer]\n"
+        out << "font-size=" << self.fontSize << "pt\n"
+        out << "x=" << x << "\n"
+        out << "y=" << y << "\n"
+        out << "w=" << w << "\n"
+        out << "h=" << h << "\n"
+        rcFile.close()
+        
+    def loadRcFile(self):
+        print("loading...")
+        rcFile=QFile(self.rcFileName)
+        if not rcFile.open(QFile.ReadOnly|QFile.Text):
+            warn=QMessageBox(QMessageBox.Warning,"Error","Cannot read resource file " + self.rcFileName + "; using default settings. "+rcFile.errorString(),
+                            QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            warn.show()
+            warn.raise_()
+            warn.exec_()
+            return
+        inStr=QTextStream(rcFile)
+        line=inStr.readLine()
+        if line!="[RadioLog Viewer]":
+            warn=QMessageBox(QMessageBox.Warning,"Error","Specified resource file " + self.rcFileName + " is not a valid resource file; using default settings.",
+                            QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            warn.show()
+            warn.raise_()
+            warn.exec_()
+            rcFile.close()
+            return
+        while not inStr.atEnd():
+            line=inStr.readLine()
+            tokens=line.split("=")
+            if tokens[0]=="x":
+                self.x=int(tokens[1])
+            elif tokens[0]=="y":
+                self.y=int(tokens[1])
+            elif tokens[0]=="w":
+                self.w=int(tokens[1])
+            elif tokens[0]=="h":
+                self.h=int(tokens[1])
+            elif tokens[0]=="font-size":
+                self.fontSize=int(tokens[1].replace('pt',''))
+        rcFile.close()
+        
     def closeEvent(self,event):
-        print("closing")
-        QTimer.singleShot(200,self.parent.ui.mdi.tileSubWindows)
+        self.saveRcFile()
+        event.accept()
+        self.parent.quit()
+
+
+# class MyDockWidget(QDockWidget):
+
+# class Panel(QTableWidget):
+#     def __init__(self,parent):
+#         super().__init__(1,3)
+#         self.parent=parent
+#         self.palette=QPalette()
+
+class Panel(QFrame):
+    def __init__(self,parent):
+        super().__init__()
+        self.parent=parent
+        font=QFont()
+        font.setFamily("Segoe UI")
+        font.setPointSize(14)
+        font.setBold(True)        
+        smallFont=QFont()
+        smallFont.setFamily("Segoe UI")
+        smallFont.setPointSize(11)        
+        self.palette=QPalette()
+        self.layout=QVBoxLayout(self)
+        self.titleBarLayout=QHBoxLayout(self)
+        self.titleWidget=QLabel("label")
+        self.titleWidget.setFont(font)
+        self.statusWidget=QLabel()
+        self.statusWidget.setFont(smallFont)
+        self.closeButton=QPushButton(self)
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/radiolog_viewer_ui/close.png"), QIcon.Normal, QIcon.Off)
+        self.closeButton.setIcon(icon)
+        self.closeButton.setIconSize(QSize(20, 20))
+        self.closeButton.setMinimumHeight(20)
+        self.closeButton.setMaximumHeight(20)
+        self.titleBarLayout.addWidget(self.titleWidget)
+        self.titleBarLayout.addWidget(self.statusWidget)
+        self.titleBarLayout.addWidget(self.closeButton)
+        self.tableWidget=QTableWidget(0,3,self)
+        self.tableWidget.setStyleSheet("background-color:white")
+        self.layout.insertLayout(0,self.titleBarLayout)
+        self.layout.addWidget(self.tableWidget)
+        self.setFrameShape(QFrame.Panel)
+        self.setFrameShadow(QFrame.Raised)
+        self.setLineWidth(2)
+        self.statusWidget.setMinimumHeight(20)
+        self.statusWidget.setMaximumHeight(20)
+        self.setStyleSheet("background-color:lightgray")
+        self.titleBarLayout.setSpacing(2)
+        self.layout.setSpacing(2)
+        self.layout.setContentsMargins(2,2,2,2)
+        self.setMinimumHeight(self.parent.panelHeight)
+        self.setMaximumHeight(self.parent.panelHeight)
+        self.setMinimumWidth(self.parent.panelWidth)
+        self.setMaximumWidth(self.parent.panelWidth)
+     
+    def throb(self,final=[255,255,255],n=0):
+        # this function calls itself recursivly 25 times to throb the background blue->white
+#         rprint("throb:n="+str(n))
+        self.palette.setColor(QPalette.Background,QColor(n*10,n*10,255))
+        self.setStyleSheet("background:rgb("+str(n*10)+","+str(n*10)+",255)")
+        self.setPalette(self.palette)
+        if n<25:
+            #fix #333: make throbTimer a normal timer and then call throbTimer.setSingleShot,
+            # so we can just stop it using .stop() when the widget is closed
+            # to avert 'wrapped C/C++ object .. has been deleted'
+#             self.throbTimer=QTimer.singleShot(15,lambda:self.throb(n+1))
+            self.throbTimer=QTimer()
+            self.throbTimer.timeout.connect(lambda:self.throb(final,n+1))
+            self.throbTimer.setSingleShot(True)
+            self.throbTimer.start(25)
+        else:
+#             rprint("throb complete")
+            self.throbTimer=None
+#             self.palette.setColor(QPalette.Background,QColor(255,255,255))
+            self.palette.setColor(QPalette.Background,QColor(final[0],final[1],final[2]))
+            self.setStyleSheet("background:rgb("+str(final[0])+","+str(final[1])+","+str(final[2])+")")
+            self.setPalette(self.palette)
+            
+            
+# class Dock(QMdiSubWindow):
+#     def __init__(self,parent,*args):
+#         QMdiSubWindow.__init__(self,*args)
+#         self.parent=parent
+#     
+#     def closeEvent(self,event):
+#         print("closing")
+#         QTimer.singleShot(200,self.parent.ui.mdi.tileSubWindows)
         
         
 def main():

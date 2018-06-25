@@ -6,50 +6,186 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1456</width>
+    <width>956</width>
     <height>880</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Radiolog Viewer</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Watched Dir</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QLineEdit" name="watchedDirField"/>
-   </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="rescanButton">
-     <property name="text">
-      <string>Re-scan</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Watched File</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QLineEdit" name="watchedFileField"/>
-   </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QMdiArea" name="mdi"/>
-   </item>
-   <item row="3" column="0" colspan="2">
-    <widget class="QTextEdit" name="logField"/>
-   </item>
-  </layout>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <widget class="QWidget" name="gridLayoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>218</x>
+     <y>102</y>
+     <width>597</width>
+     <height>689</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <property name="spacing">
+     <number>2</number>
+    </property>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="">
+   <property name="geometry">
+    <rect>
+     <x>219</x>
+     <y>4</y>
+     <width>214</width>
+     <height>46</height>
+    </rect>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QGroupBox" name="groupBox">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="title">
+       <string/>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+      <property name="checkable">
+       <bool>false</bool>
+      </property>
+      <widget class="QPushButton" name="rescanButton">
+       <property name="geometry">
+        <rect>
+         <x>169</x>
+         <y>1</y>
+         <width>36</width>
+         <height>36</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="baseSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="radiolog_viewer.qrc">
+         <normaloff>:/radiolog_viewer_ui/reload-icon.png</normaloff>:/radiolog_viewer_ui/reload-icon.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>30</height>
+        </size>
+       </property>
+      </widget>
+      <widget class="QToolButton" name="optionsButton">
+       <property name="geometry">
+        <rect>
+         <x>124</x>
+         <y>1</y>
+         <width>37</width>
+         <height>36</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="radiolog_viewer.qrc">
+         <normaloff>:/radiolog_viewer_ui/options_icon.png</normaloff>:/radiolog_viewer_ui/options_icon.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="shortcut">
+        <string>F2</string>
+       </property>
+      </widget>
+      <widget class="QLCDNumber" name="clock">
+       <property name="geometry">
+        <rect>
+         <x>5</x>
+         <y>0</y>
+         <width>115</width>
+         <height>36</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>115</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>36</height>
+        </size>
+       </property>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <zorder>horizontalLayoutWidget</zorder>
+  <zorder>lineEdit</zorder>
+  <zorder>groupBox</zorder>
+  <zorder>horizontalSpacer</zorder>
+  <zorder>dockWidget</zorder>
+  <zorder>dockWidget</zorder>
+  <zorder>gridLayoutWidget</zorder>
  </widget>
- <resources/>
+ <resources>
+  <include location="radiolog_viewer.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>rescanButton</sender>
@@ -58,12 +194,12 @@
    <slot>rescan()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>319</x>
-     <y>39</y>
+     <x>400</x>
+     <y>26</y>
     </hint>
     <hint type="destinationlabel">
-     <x>548</x>
-     <y>24</y>
+     <x>417</x>
+     <y>68</y>
     </hint>
    </hints>
   </connection>
