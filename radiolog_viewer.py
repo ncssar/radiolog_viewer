@@ -83,7 +83,7 @@ class MyWindow(QMainWindow,Ui_radiolog_viewer):
         #  maxDockAreaHeight, then add a column instead and start at the top
         #  of the new column
         self.maxGridHeight=600
-        self.setStyleSheet("background-color:gray")
+        self.setStyleSheet("background-color:#333333")
         # default window geometry; overridden by previous rc file
         self.x=100
         self.y=100
@@ -104,6 +104,10 @@ class MyWindow(QMainWindow,Ui_radiolog_viewer):
         self.refreshTimer.timeout.connect(self.refresh)
         self.refreshTimer.timeout.connect(self.updateClock)
         self.refreshTimer.start(3000)
+        
+        self.resizeTimer=QTimer()
+        self.resizeTimer.setSingleShot(True)
+        self.resizeTimer.timeout.connect(self.resizeEventPost)
         
     def rescan(self):
         print("scanning for latest valid csv file...")
@@ -170,6 +174,7 @@ class MyWindow(QMainWindow,Ui_radiolog_viewer):
 
 #                     self.dockTableWidgets[callsign].setSelectionMode(QAbstractItemView.NoSelection)
                     t.resizeColumnsToContents()
+                    t.scrollToBottom()
 #                     self.dockTableWidgets[callsign].resizeRowsToContents()
 #                     self.docks[callsign].palette.setColor(QPalette.Background,QColor(220,220,255))
 #                     self.docks[callsign].setStyleSheet("background:rgb(220,220,255)")
@@ -314,30 +319,13 @@ class MyWindow(QMainWindow,Ui_radiolog_viewer):
         rows=self.ui.gridLayout.rowCount()
         cols=self.ui.gridLayout.columnCount()
 #         print("the grid currently has "+str(rows)+" rows and "+str(cols)+" columns")
-#         for c in range(1,cols+1):
         for c in range(cols):
-#             for r in range(1,min(rows,int(self.maxGridHeight/self.panelHeight))+1):
-             for r in range(min(rows,int(self.maxGridHeight/self.panelHeight))+1):
+            for r in range(min(rows,int(self.maxGridHeight/self.panelHeight))+1):
 #                 print("checking row:"+str(r)+" col:"+str(c)+" = "+str(self.ui.gridLayout.itemAtPosition(r,c)))
                 if not self.ui.gridLayout.itemAtPosition(r,c):
 #                     print("empty cell found at row="+str(r)+" col="+str(c))
                     return([r,c])
         return([0,c+1])
-    
-#               
-#         c=0
-#         for col in self.grid:
-#             c=c+1
-#             r=0
-#             for row in col:
-#                 r=r+1
-#                 print("checking row:"+str(r)+" col:"+str(c))
-#                 if row=="":
-#                     return([c,r])
-#         # no open location found - the existing grid is full:
-#         #  add a column and return the first row in the new column
-#         self.grid.append([[]])
-#         return([c+1,0])
                  
     def updateClock(self):
         self.ui.clock.display(time.strftime("%H:%M"))
@@ -397,6 +385,14 @@ class MyWindow(QMainWindow,Ui_radiolog_viewer):
                 self.fontSize=int(tokens[1].replace('pt',''))
         rcFile.close()
         
+    def resizeEvent(self,event):
+        self.resizeTimer.start(500)
+        event.accept()
+        
+    def resizeEventPost(self):
+        self.maxGridHeight=self.height()-190
+        self.redoGrid()
+        
     def closeEvent(self,event):
         self.saveRcFile()
         event.accept()
@@ -449,7 +445,7 @@ class Panel(QFrame):
         self.setLineWidth(2)
         self.statusWidget.setMinimumHeight(20)
         self.statusWidget.setMaximumHeight(20)
-        self.setStyleSheet("background-color:lightgray")
+        self.setStyleSheet("background-color:#666666")
         self.titleBarLayout.setSpacing(2)
         self.layout.setSpacing(2)
         self.layout.setContentsMargins(2,2,2,2)
