@@ -138,8 +138,9 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
             # remove the pygtail offset file, if any, so pygtail will
             #  read from the beginning even if this file has already
             #  been read by pygtail
-            if os.path.isfile(self.watchedFile+".offset"):
-                os.remove(self.watchedFile+".offset")
+            self.offsetFileName=self.watchedFile+".offset"+str(os.getpid())
+            if os.path.isfile(self.offsetFileName):
+                os.remove(self.offsetFileName)
             print("  found "+self.watchedFile)
             self.refresh(throb=False)
             if self.latestCallsign!="":
@@ -245,7 +246,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
 
     def readWatchedFile(self):
         newEntries=[]
-        for line in Pygtail(self.watchedFile):
+        for line in Pygtail(self.watchedFile,offset_file=self.offsetFileName):
             newEntries.append(line.split(','))
         return newEntries
 
