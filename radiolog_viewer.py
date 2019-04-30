@@ -64,7 +64,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.setAttribute(Qt.WA_DeleteOnClose) 
         self.panels={}
         self.watchedDir="C:\\Users\\caver\\Documents"
-        self.panelWidth=300
+        self.panelWidth=500
         self.panelHeight=120
         self.panelSpacing=2      
         # if a new panel would cause the window to expand taller than
@@ -135,6 +135,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
             self.rescanTimer.stop()
             self.ui.notYet.close()
             self.watchedFile=self.csvFiles[0][0]
+            self.setWindowTitle("RadioLog Viewer - "+os.path.basename(self.watchedFile))
             # remove the pygtail offset file, if any, so pygtail will
             #  read from the beginning even if this file has already
             #  been read by pygtail
@@ -366,6 +367,19 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
             elif tokens[0]=="font-size":
                 self.fontSize=int(tokens[1].replace('pt',''))
         rcFile.close()
+        
+        # make sure specified screen position and size will fit on the available screens
+        #  (in case rc file was saved on dual display but now running on single)
+        desktop=QApplication.desktop()
+        h=desktop.height()
+        w=desktop.width()
+        print("Available desktop size: "+str(w)+" x "+str(h))
+        if self.x>w:
+            self.x=self.x-w # assume the same first screen was used when rc was saved
+        if self.x>w:
+            self.x=200 # if still off the screen, use a hardcoded fallback
+        if self.w+self.x>w:
+            self.w=w-self.x-100 # cut it off 100px from the right edge of the screen
         
     def resizeEvent(self,event):
         self.resizeTimer.start(500)
