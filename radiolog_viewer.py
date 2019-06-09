@@ -51,6 +51,7 @@ from radiolog_viewer_ui import Ui_radiolog_viewer
 
 statusColorDict={}
 statusColorDict["At IC"]=["22ff22","000000"]
+statusColorDict["Available"]=["00ffff","000000"]
 statusColorDict["In Transit"]=["2222ff","eeeeee"]
 statusColorDict["Waiting for Transport"]=["2222ff","eeeeee"]
 
@@ -80,21 +81,38 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.h=400
         self.fontSize=12
         self.grid=[[0]]
+        self.sidebarMode=False
+        self.sidebarJustToggled=False
+        self.setMinimumSize(200,200)
         
         self.normalTableFont=QFont()
         self.normalTableFont.setPixelSize(self.fontSize)
         self.latestTableFont=QFont()
         self.latestTableFont.setPixelSize(self.fontSize)
         self.latestTableFont.setBold(True)
-        
-        self.loadRcFile()
-        self.setGeometry(int(self.x),int(self.y),int(self.w),int(self.h))
          
         self.latestCallsign=""
         self.normalFrameColor=[150,150,150]
         self.latestFrameColor=[230,230,255]
         self.normalTableColor=[200,200,200]
         self.latestTableColor=[255,255,255]  
+        
+        sidebarTableFont=QFont()
+        sidebarTableFont.setFamily("Segoe UI")
+        sidebarTableFont.setPointSize(14)
+        sidebarTableFont.setBold(True)
+        self.sidebarTableWidget=QTableWidget(0,2,self)
+        self.sidebarTableWidget.setFont(sidebarTableFont)
+        self.ui.verticalLayout.addWidget(self.sidebarTableWidget)
+        self.sidebarTableWidget.hide()
+        self.sidebarTableWidget.horizontalHeader().hide()
+        self.sidebarTableWidget.verticalHeader().hide()
+        self.sidebarTableWidget.setStyleSheet("background:rgb(240,240,240)")
+        self.sidebarTableWidget.setSelectionMode(QAbstractItemView.NoSelection)
+        self.sidebarTableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
+        self.loadRcFile()
+        self.setGeometry(int(self.x),int(self.y),int(self.w),int(self.h))
  
         self.resizeTimer=QTimer()
         self.resizeTimer.setSingleShot(True)
@@ -102,8 +120,10 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
                  
         self.updateClock()
 
+#         self.parent.setStyleSheet("QMessageBox QPushButton{background-color: green}")
         self.ui.notYet=QMessageBox(QMessageBox.Information,"Waiting...","No valid radiolog file was found.\nRe-scanning every few seconds...",
                     QMessageBox.Abort,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+        self.ui.notYet.setStyleSheet("background-color: lightgray")
         self.ui.notYet.setModal(False)
         self.ui.notYet.show()
         self.ui.notYet.buttonClicked.connect(self.notYetButtonClicked)
@@ -125,6 +145,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.csvFiles=[]
         self.log=[]
         self.callsigns=[]
+        self.sidebarTableWidget.setRowCount(0) # delete all rows
         for callsign in self.panels:
             self.ui.gridLayout.removeWidget(self.panels[callsign])
             self.panels[callsign].setParent(None)
@@ -162,8 +183,34 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
                         
                         # add a new panel if needed
                         if not callsign in self.callsigns:
+                            st=self.sidebarTableWidget
+                            newRowCount=st.rowCount()+1
+                            st.setRowCount(newRowCount)
+                            t1=QTableWidgetItem(callsign)
+                            t2=QTableWidgetItem(time)
+                            st.setItem(newRowCount-1,0,t1)
+                            st.setItem(newRowCount-1,1,t2)
                             self.newPanel(callsign)
-                            
+                        
+                        # update sidebar table
+                        st=self.sidebarTableWidget
+                        stRow=0
+                        for n in range(st.rowCount()):
+                            if st.item(n,0):
+                                if st.item(n,0).text()==callsign:
+                                    stRow=n
+                        st1=QTableWidgetItem(callsign)
+                        st2=QTableWidgetItem(time)
+#                         st2.setBackground(QColor(statusColorDict.get(status,["eeeeee",""])[0]))
+                        st.setItem(stRow,0,st1) # redundant, but, will highlight any table sync issues
+                        st.setItem(stRow,1,st2)
+#                         st.item(stRow,1).setData(Qt.BackgroundRole,QVariant(QColor(statusColorDict.get(status,["eeeeee",""])[0])))
+#                         st.item(stRow,1).setData(Qt.BackgroundRole,QVariant(QColor(255,0,0)))
+#                         st.item(stRow,1).setBackground(QColor(200,0,0))
+#                         st.item(stRow,1).setBackground(QColor("#00ffff"))
+                        print("status:"+status+"  color:"+statusColorDict.get(status,["eeeeee",""])[0])
+                        st.item(stRow,1).setBackground(QColor("#"+statusColorDict.get(status,["eeeeee",""])[0]))
+                        
                         # add new entry to the callsign's panel's table
                         p=self.panels[callsign]
                         p.statusWidget.setText(status)
@@ -273,6 +320,8 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         t.setGeometry(QRect(0,0,300,200))
         t.setRowCount(1)
         self.addPanelToGrid(panel)
+        if self.sidebarMode:
+            panel.hide()
 
     def redoGrid(self):
 #         self.ui.gridLayoutWidget = QWidget(self)
@@ -315,7 +364,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         
     def saveRcFile(self):
         print("saving...")
-        (x,y,w,h)=self.geometry().getRect()
+        (self.x,self.y,self.w,self.h)=self.geometry().getRect()
         rcFile=QFile(self.rcFileName)
         if not rcFile.open(QFile.WriteOnly|QFile.Text):
             warn=QMessageBox(QMessageBox.Warning,"Error","Cannot write resource file " + self.rcFileName + "; proceeding, but, current settings will be lost. "+rcFile.errorString(),
@@ -327,10 +376,10 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         out=QTextStream(rcFile)
         out << "[RadioLog Viewer]\n"
         out << "font-size=" << self.fontSize << "pt\n"
-        out << "x=" << x << "\n"
-        out << "y=" << y << "\n"
-        out << "w=" << w << "\n"
-        out << "h=" << h << "\n"
+        out << "x=" << self.x << "\n"
+        out << "y=" << self.y << "\n"
+        out << "w=" << self.w << "\n"
+        out << "h=" << self.h << "\n"
         rcFile.close()
         
     def loadRcFile(self):
@@ -387,8 +436,31 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         
     def resizeEventPost(self):
         self.maxGridHeight=self.height()-190
-        self.redoGrid()
-        
+        if not self.sidebarJustToggled:
+            self.redoGrid()
+            self.sidebarJustToggled=False
+    
+    def sidebarToggle(self):
+        self.sidebarJustToggled=True # to prevent redoGrid during resizeEventPost
+        if self.sidebarMode:
+            print("Exiting sidebar mode")
+            for p in self.panels:
+                self.panels[p].show()
+            self.sidebarTableWidget.hide()
+            self.setGeometry(self.x,self.y,self.w,self.h)
+            self.ui.rescanButton.show()
+            self.redoGrid()
+            self.sidebarMode=False
+        else:
+            print("Entering sidebar mode")
+            for p in self.panels:
+                self.panels[p].hide()
+            self.sidebarTableWidget.show()
+            (self.x,self.y,self.w,self.h)=self.geometry().getRect()
+            self.ui.rescanButton.hide()
+            self.setGeometry(0,0,200,QApplication.desktop().screenGeometry().height())
+            self.sidebarMode=True
+
     def closeEvent(self,event):
         self.saveRcFile()
         event.accept()
@@ -406,7 +478,7 @@ class Panel(QFrame):
         font.setBold(True)        
         smallFont=QFont()
         smallFont.setFamily("Segoe UI")
-        smallFont.setPointSize(9)        
+        smallFont.setPointSize(10)        
         self.palette=QPalette()
         self.layout=QVBoxLayout(self)
         self.titleBarLayout=QHBoxLayout()
@@ -416,10 +488,10 @@ class Panel(QFrame):
         self.statusWidget.setFont(smallFont)
         self.statusWidget.setAlignment(Qt.AlignHCenter|Qt.AlignVCenter)
         self.closeButton=QPushButton(self)
-        self.closeButton.setMinimumHeight(24)
-        self.closeButton.setMaximumHeight(24)
-        self.closeButton.setMinimumWidth(24)
-        self.closeButton.setMaximumWidth(24)
+        self.closeButton.setMinimumHeight(20)
+        self.closeButton.setMaximumHeight(20)
+        self.closeButton.setMinimumWidth(20)
+        self.closeButton.setMaximumWidth(20)
         self.closeButton.setStyleSheet("border:none")
         self.closeButton.clicked.connect(self.close)
         self.closeButton.setStyleSheet("""
@@ -447,8 +519,9 @@ class Panel(QFrame):
         self.tableWidget.setWordWrap(True)
         self.tableWidget.setTextElideMode(Qt.ElideNone)
         vh=self.tableWidget.verticalHeader()
-        vh.setMinimumSectionSize(80)
+        vh.setMinimumSectionSize(20) # minimum row height
         hh=self.tableWidget.horizontalHeader()
+        hh.setMinimumSectionSize(20)
         hh.resizeSection(0,40)
         hh.resizeSection(1,20)
         hh.setStretchLastSection(True)

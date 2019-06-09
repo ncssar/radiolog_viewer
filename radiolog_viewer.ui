@@ -163,8 +163,8 @@
    <slot>rescan()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>400</x>
-     <y>26</y>
+     <x>398</x>
+     <y>29</y>
     </hint>
     <hint type="destinationlabel">
      <x>417</x>
@@ -172,8 +172,25 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>optionsButton</sender>
+   <signal>clicked()</signal>
+   <receiver>radiolog_viewer</receiver>
+   <slot>sidebarToggle()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>349</x>
+     <y>21</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>367</x>
+     <y>70</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>rescan()</slot>
+  <slot>sidebarToggle()</slot>
  </slots>
 </ui>

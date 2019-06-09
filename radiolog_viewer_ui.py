@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'radiolog_viewer.ui'
 #
-# Created by: PyQt5 UI code generator 5.8.2
+# Created by: PyQt5 UI code generator 5.11.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -70,10 +70,11 @@ class Ui_radiolog_viewer(object):
         self.gridLayout.setHorizontalSpacing(2)
         self.gridLayout.setObjectName("gridLayout")
         self.verticalLayout.addLayout(self.gridLayout)
-        self.verticalLayout.setStretch(0, 1)
+        self.verticalLayout.setStretch(1, 1)
 
         self.retranslateUi(radiolog_viewer)
         self.rescanButton.clicked.connect(radiolog_viewer.rescan)
+        self.optionsButton.clicked.connect(radiolog_viewer.sidebarToggle)
         QtCore.QMetaObject.connectSlotsByName(radiolog_viewer)
 
     def retranslateUi(self, radiolog_viewer):
