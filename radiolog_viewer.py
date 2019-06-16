@@ -43,6 +43,7 @@ from PyQt5.QtWidgets import *
 from pygtail import Pygtail
 import sys
 import os
+import shutil
 import glob
 import regex
 import time
@@ -60,11 +61,19 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         QDialog.__init__(self)
         self.parent=parent
         self.rcFileName="radiolog_viewer.rc"
+        self.configFileName="./local/radiolog_viewer.cfg"
+        self.readConfigFile()
+        if not os.path.isdir(self.watchedDir):
+            err=QMessageBox(QMessageBox.Critical,"Error","Specified directory to be watched does not exist:\n \n  "+self.watchedDir+"\n \nAborting.",
+                            QMessageBox.Close,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            err.show()
+            err.raise_()
+            err.exec_()
+            exit(-1)
         self.ui=Ui_radiolog_viewer()
         self.ui.setupUi(self)
         self.setAttribute(Qt.WA_DeleteOnClose) 
         self.panels={}
-        self.watchedDir="C:\\Users\\caver\\Documents"
         self.panelWidth=500
         self.panelHeight=120
         self.panelSpacing=2      
@@ -137,11 +146,70 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.refreshTimer.timeout.connect(self.updateClock)
         self.refreshTimer.start(3000)
     
+    def readConfigFile(self):
+        # create the file (and its directory) if it doesn't already exist
+        dir=os.path.dirname(self.configFileName)
+        if not os.path.exists(self.configFileName):
+            print("Config file "+self.configFileName+" not found.")
+            if not os.path.isdir(dir):
+                try:
+                    print("Creating config dir "+dir)
+                    os.makedirs(dir)
+                except:
+                    print("ERROR creating directory "+dir+" for config file.  Better luck next time.")
+            try:
+                defaultConfigFileName=os.path.join(os.path.dirname(os.path.realpath(__file__)),"default.cfg")
+                print("Copying default config file "+defaultConfigFileName+" to "+self.configFileName)
+                shutil.copyfile(defaultConfigFileName,self.configFileName)
+            except:
+                print("ERROR copying the config file.  Better luck next time.")
+                
+        # specify defaults here
+        self.watchedDir="Z:\\"
+        
+        configFile=QFile(self.configFileName)
+        if not configFile.open(QFile.ReadOnly|QFile.Text):
+            warn=QMessageBox(QMessageBox.Warning,"Error","Cannot read configuration file " + self.configFileName + "; using default settings. "+configFile.errorString(),
+                            QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            warn.show()
+            warn.raise_()
+            warn.exec_()
+            return
+        inStr=QTextStream(configFile)
+        line=inStr.readLine()
+        if line!="[RadioLogViewer]":
+            warn=QMessageBox(QMessageBox.Warning,"Error","Specified configuration file " + self.configFileName + " is not a valid configuration file; using default settings.",
+                            QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            warn.show()
+            warn.raise_()
+            warn.exec_()
+            configFile.close()
+            return
+        
+        while not inStr.atEnd():
+            line=inStr.readLine()
+            tokens=line.split("=")
+            if tokens[0]=="watchedDir":
+                self.watchedDir=tokens[1]
+                print("watchedDir specification "+self.watchedDir+" parsed from config file.")
+        configFile.close()
+        
+        # validation and post-processing of each item
+        configErr=""
+
+        # process any ~ characters
+        self.watchedDir=os.path.expanduser(self.watchedDir)             
+            
+        if configErr:
+            self.configErrMsgBox=QMessageBox(QMessageBox.Warning,"Non-fatal Configuration Error(s)","Error(s) encountered in config file "+self.configFileName+":\n\n"+configErr,
+                             QMessageBox.Ok,self,Qt.WindowTitleHint|Qt.WindowCloseButtonHint|Qt.Dialog|Qt.MSWindowsFixedSizeDialogHint|Qt.WindowStaysOnTopHint)
+            self.configErrMsgBox.exec_()
+
     def notYetButtonClicked(btn):
         exit()
             
     def rescan(self):
-        print("scanning for latest valid csv file...")
+        print("scanning "+self.watchedDir+" for latest valid csv file...")
         self.csvFiles=[]
         self.log=[]
         self.callsigns=[]
