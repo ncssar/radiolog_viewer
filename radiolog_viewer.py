@@ -56,6 +56,10 @@ statusColorDict["Available"]=["00ffff","000000"]
 statusColorDict["In Transit"]=["2222ff","eeeeee"]
 statusColorDict["Waiting for Transport"]=["2222ff","eeeeee"]
 
+stateColorDict={}
+stateColorDict["#ff4444"]="#eeeeee"
+stateColorDict["#eeeeee"]="#ff4444"
+
 class MyWindow(QDialog,Ui_radiolog_viewer):
     def __init__(self,parent):
         QDialog.__init__(self)
@@ -301,6 +305,8 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
                         t.setItem(r,0,t1)
                         t.setItem(r,1,t2)
                         t.setItem(r,2,t3)
+                        
+                        self.setRowColor(t,r,"#ff4444")
     
                         if newRowCount>2:
                             t.item(r-1,0).setFont(self.normalTableFont)
@@ -330,6 +336,18 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
                         self.setColors(p,throb)
                         self.latestCallsign=callsign
 
+    def setRowColor(self,table,row,color):
+        for col in range(table.columnCount()):
+            table.item(row,col).setBackground(QColor(color))
+        
+    def tableCellClicked(self,row,col):
+        table=self.sender()
+        i=table.item(row,col)
+        if i:
+            prevColor=i.background().color().name()
+            newColor=stateColorDict.get(prevColor,"#cccccc")
+            self.setRowColor(table,row,newColor)
+        
     def setColors(self,panel,throb):
         c=self.normalFrameColor
         t1=self.normalTableColor
@@ -372,6 +390,7 @@ class MyWindow(QDialog,Ui_radiolog_viewer):
         self.panels[callsign]=panel
         panel.titleWidget.setText(callsign)
         t=panel.tableWidget
+        t.cellClicked.connect(self.tableCellClicked)
         t.horizontalHeader().setMinimumSectionSize(15)
         t.horizontalHeader().setStretchLastSection(True)
         t.verticalHeader().setDefaultSectionSize(15)
